@@ -88,6 +88,17 @@ class NumericalTests(unittest.TestCase):
         self.assertEqual(b.wetted_area, 4*a.wetted_area)
         np.testing.assert_allclose(b.pore.diameter_xyz, 2*a.pore.diameter_xyz)
 
+    def test_preview_mesh_is_lighter_without_changing_analysis(self):
+        r = analyze(tpms_type='Gyroid', grid_size=60)
+        original_field = r.field.copy()
+        full_vertices, full_faces = geometry_mesh(r, max_display_points=1000)
+        vertices, faces = geometry_mesh(r)
+        self.assertLess(len(faces), len(full_faces)/2)
+        self.assertGreater(len(vertices), 0)
+        self.assertTrue(np.all(vertices >= 0))
+        self.assertTrue(np.all(vertices <= r.alpha+1e-6))
+        np.testing.assert_array_equal(r.field, original_field)
+
     def test_grid_rounding_and_validation(self):
         self.assertEqual(analyze(grid_size=20.5).grid_size, 21)
         for kwargs in [dict(target_porosity=0), dict(target_porosity=100),

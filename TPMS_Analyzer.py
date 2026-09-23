@@ -297,12 +297,8 @@ def plot_geometry(ax, result, mesh, transparent=True):
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
     ax.clear()
     vertices, faces = mesh
-    lattice = Poly3DCollection(vertices[faces], facecolors=(.55, .47, .28),
-                               linewidths=0, alpha=.22 if transparent else 1.,
-                               shade=True) if len(faces) else None
-    if lattice is not None:
-        lattice.set_edgecolor('none')
-        ax.add_collection3d(lattice)
+    surfaces = [vertices[faces]]
+    lattice_count = len(faces)
     p = result.pore
     if p.radius > 0 and np.all(np.isfinite(p.center_index)):
         center = p.center_index[[1, 0, 2]] * result.alpha/(result.grid_size-1)
@@ -311,13 +307,28 @@ def plot_geometry(ax, result, mesh, transparent=True):
         sx = np.outer(np.cos(u), np.cos(v))
         sy = np.outer(np.sin(u), np.cos(v))
         sz = np.outer(np.ones_like(u), np.sin(v))
-        ax.plot_surface(center[0]+p.radius*sx, center[1]+p.radius*sy,
-                        center[2]+p.radius*sz, color=(.90, .15, .10),
-                        linewidth=0, rcount=49, ccount=49, alpha=1.)
+        sphere = center + p.radius*np.stack((sx, sy, sz), axis=-1)
+        a, b, c, d = sphere[:-1, :-1], sphere[1:, :-1], sphere[1:, 1:], sphere[:-1, 1:]
+        surfaces.append(np.concatenate((np.stack((a, b, c), axis=2).reshape(-1, 3, 3),
+                                        np.stack((a, c, d), axis=2).reshape(-1, 3, 3))))
         ax.scatter(*center, color='black', s=15)
         ax.text(center[0], center[1], center[2]+p.radius,
-                f'  D_p = {format_significant(p.diameter, result.digits)} mm\n  Representative position',
-                color=(.75, .05, .05), weight='bold', fontsize=11)
+                 f'  D_p = {format_significant(p.diameter, result.digits)} mm\n  Representative position',
+                 color=(.75, .05, .05), weight='bold', fontsize=11)
+    # A single collection sorts lattice and sphere triangles together on every
+    # redraw; separate collections can incorrectly swap their depth ordering.
+    preview = None
+    if any(len(surface) for surface in surfaces):
+        triangles = np.concatenate(surfaces)
+        colors = np.empty((len(triangles), 4))
+        colors[:lattice_count] = (.55, .47, .28, .22 if transparent else 1.)
+        colors[lattice_count:] = (.90, .15, .10, 1.)
+        preview = Poly3DCollection(triangles, facecolors=colors,
+                                   linewidths=0, shade=True)
+        preview.set_edgecolor('none')
+        preview._tpms_lattice_count = lattice_count
+        preview._tpms_face_count = len(triangles)
+        ax.add_collection3d(preview)
     alpha = result.alpha
     ax.set(xlim=(0, alpha), ylim=(0, alpha), zlim=(0, alpha))
     for name in 'xyz':
@@ -328,7 +339,17 @@ def plot_geometry(ax, result, mesh, transparent=True):
     # MATLAB and Matplotlib measure azimuth from different starting axes.
     ax.view_init(elev=30, azim=52.5)
     ax.grid(False)
-    return lattice
+    return preview
+
+
+def set_preview_transparency(preview, transparent):
+    if preview is None:
+        return
+    colors = np.empty((preview._tpms_face_count, 4))
+    count = preview._tpms_lattice_count
+    colors[:count] = (.55, .47, .28, .22 if transparent else 1.)
+    colors[count:] = (.90, .15, .10, 1.)
+    preview.set_facecolor(colors)
 
 
 class TPMSAnalyzer:
@@ -511,8 +532,7 @@ class TPMSAnalyzer:
     def toggle_transparency(self):
         self.transparent = not self.transparent
         self.transparency_button.configure(text=f'Transparency: {"ON" if self.transparent else "OFF"}')
-        if self.lattice is not None:
-            self.lattice.set_alpha(.22 if self.transparent else 1.)
+        set_preview_transparency(self.lattice, self.transparent)
         self.canvas.draw_idle()
 
     def close(self):

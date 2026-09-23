@@ -110,15 +110,21 @@ class NumericalTests(unittest.TestCase):
         import io
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_agg import FigureCanvasAgg
-        from TPMS_Analyzer import plot_geometry
+        from TPMS_Analyzer import plot_geometry, set_preview_transparency
         r = analyze(grid_size=24)
         fig = Figure(figsize=(5, 5))
         FigureCanvasAgg(fig)
         ax = fig.add_subplot(111, projection='3d')
         lattice = plot_geometry(ax, r, geometry_mesh(r))
-        self.assertEqual(lattice.get_alpha(), .22)
-        lattice.set_alpha(1.)
-        self.assertEqual(lattice.get_alpha(), 1.)
+        self.assertEqual(len(ax.collections), 2)  # combined surfaces and center dot
+        self.assertGreater(lattice._tpms_face_count, lattice._tpms_lattice_count)
+        self.assertAlmostEqual(lattice._facecolor3d[0, 3], .22)
+        self.assertAlmostEqual(lattice._facecolor3d[-1, 3], 1.)
+        set_preview_transparency(lattice, False)
+        self.assertTrue(np.all(lattice._facecolor3d[:, 3] == 1.))
+        set_preview_transparency(lattice, True)
+        self.assertAlmostEqual(lattice._facecolor3d[0, 3], .22)
+        self.assertAlmostEqual(lattice._facecolor3d[-1, 3], 1.)
         buf = io.BytesIO()
         fig.savefig(buf, format='png')
         self.assertGreater(buf.tell(), 1000)

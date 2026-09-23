@@ -261,21 +261,31 @@ def analyze(network_type='Solid', tpms_type='Koch', target_porosity=70.,
                           digits, field, c, porosity, solid_fraction, area, pore)
 
 
-def geometry_mesh(result):
-    """Closed display mesh; padding is ONLY for rendering, never analysis.
+def geometry_mesh(result, max_display_points=35):
+    """Build a capped display mesh without changing the analysis grid.
 
-    Clamping the padded isosurface to the box caps solid boundary portions
-    while retaining pore openings. Triangulation differs from MATLAB isocaps.
+    Matplotlib sorts every triangle on each 3D interaction. Sampling the
+    field before marching cubes keeps rotation and zoom responsive. The
+    sampled coordinates include both box boundaries, and are mapped back to
+    physical coordinates after interpolation.
     """
     from skimage.measure import marching_cubes
     field = result.field
+    if max_display_points < 2:
+        raise ValueError('Display resolution must be at least 2.')
+    step = max(1, math.ceil((result.grid_size-1)/(max_display_points-1)))
+    indices = np.r_[np.arange(0, result.grid_size-1, step), result.grid_size-1]
+    field = field[np.ix_(indices, indices, indices)]
     volume = field-result.c if result.network_type.lower() == 'solid' else result.c-np.abs(field)
     outside = -max(1., float(np.max(np.abs(volume))))
     padded = np.pad(volume.astype(np.float32), 1, constant_values=outside)
     if padded.max() <= 0:
         return np.empty((0, 3)), np.empty((0, 3), dtype=int)
     vertices, faces, _, _ = marching_cubes(padded, 0, allow_degenerate=False)
-    vertices = np.clip(vertices-1, 0, result.grid_size-1)*result.alpha/(result.grid_size-1)
+    vertices = np.clip(vertices-1, 0, len(indices)-1)
+    for axis in range(3):
+        vertices[:, axis] = np.interp(vertices[:, axis], np.arange(len(indices)), indices)
+    vertices *= result.alpha/(result.grid_size-1)
     vertices = vertices[:, [1, 0, 2]]  # YXZ to physical XYZ
     triangles = vertices[faces]
     valid = np.linalg.norm(np.cross(triangles[:, 1]-triangles[:, 0],

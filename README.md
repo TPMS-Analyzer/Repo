@@ -43,3 +43,17 @@ print(result.pore.diameter_xyz)  # X, Y, Z in mm
 ```
 
 Run the included checks with `python -m unittest -v test_tpms_analyzer.py`.
+
+## Preview rendering performance
+
+The preview batches triangle projection and depth sorting with NumPy. It retains the same display mesh, per-face shading, fine edges, and joint depth sorting of the lattice and representative pore sphere. Transparency changes rebuild the shaded collection while preserving the camera view. Unsupported Matplotlib collection layouts or features fall back to Matplotlib's standard projection.
+
+Keep `preview_rendering.py` alongside `TPMS_Analyzer.py` when copying or downloading the application. No additional dependencies are required.
+
+Offscreen Agg measurements on the default Solid/Koch case (150 analysis points per axis, 23,048 preview triangles including the sphere, 500 × 500 pixels) gave approximately 0.82–0.86 seconds per frame with the standard projection and 0.18–0.21 seconds with the optimized projection. The compared frames were pixel-identical. Actual interactive performance depends on the computer, window size, Matplotlib version, and GUI backend.
+
+Run the numerical and rendering checks with:
+
+```text
+python -m unittest -v test_tpms_analyzer.py test_preview_rendering.py
+```

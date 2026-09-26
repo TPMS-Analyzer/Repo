@@ -294,14 +294,14 @@ def geometry_mesh(result, max_display_points=35):
 
 
 def _preview_collection(triangles, lattice_count, transparent):
-    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+    from preview_rendering import TrianglePreviewCollection
     colors = np.empty((len(triangles), 4))
     colors[:lattice_count] = (.55, .47, .28, .22 if transparent else 1.)
     colors[lattice_count:] = (.90, .15, .10, 1.)
     edges = np.zeros_like(colors)
     edges[:lattice_count] = (.10, .08, .05, .14 if transparent else .22)
     edges[lattice_count:] = (.28, .03, .02, .10)
-    preview = Poly3DCollection(triangles, facecolors=colors, edgecolors=edges,
+    preview = TrianglePreviewCollection(triangles, facecolors=colors, edgecolors=edges,
                                linewidths=.15, shade=True)
     preview._tpms_triangles = triangles
     preview._tpms_lattice_count = lattice_count

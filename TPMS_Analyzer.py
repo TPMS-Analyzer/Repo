@@ -293,8 +293,22 @@ def geometry_mesh(result, max_display_points=35):
     return vertices, faces[valid]
 
 
-def plot_geometry(ax, result, mesh, transparent=True):
+def _preview_collection(triangles, lattice_count, transparent):
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+    colors = np.empty((len(triangles), 4))
+    colors[:lattice_count] = (.55, .47, .28, .22 if transparent else 1.)
+    colors[lattice_count:] = (.90, .15, .10, 1.)
+    edges = np.zeros_like(colors)
+    edges[:lattice_count] = (.10, .08, .05, .14 if transparent else .22)
+    edges[lattice_count:] = (.28, .03, .02, .10)
+    preview = Poly3DCollection(triangles, facecolors=colors, edgecolors=edges,
+                               linewidths=.15, shade=True)
+    preview._tpms_triangles = triangles
+    preview._tpms_lattice_count = lattice_count
+    return preview
+
+
+def plot_geometry(ax, result, mesh, transparent=True):
     ax.clear()
     vertices, faces = mesh
     surfaces = [vertices[faces]]
@@ -320,17 +334,7 @@ def plot_geometry(ax, result, mesh, transparent=True):
     preview = None
     if any(len(surface) for surface in surfaces):
         triangles = np.concatenate(surfaces)
-        colors = np.empty((len(triangles), 4))
-        colors[:lattice_count] = (.55, .47, .28, .22 if transparent else 1.)
-        colors[lattice_count:] = (.90, .15, .10, 1.)
-        preview = Poly3DCollection(triangles, facecolors=colors,
-                                   linewidths=.15, shade=True)
-        # Keep Matplotlib's per-face lighting when transparency changes. A
-        # uniform set_facecolor would flatten both the lattice and the ball.
-        preview._tpms_shaded_colors = preview._facecolor3d.copy()
-        preview._tpms_lattice_count = lattice_count
-        preview._tpms_face_count = len(triangles)
-        set_preview_transparency(preview, transparent)
+        preview = _preview_collection(triangles, lattice_count, transparent)
         ax.add_collection3d(preview)
     alpha = result.alpha
     ax.set(xlim=(0, alpha), ylim=(0, alpha), zlim=(0, alpha))
@@ -347,15 +351,16 @@ def plot_geometry(ax, result, mesh, transparent=True):
 
 def set_preview_transparency(preview, transparent):
     if preview is None:
-        return
-    colors = preview._tpms_shaded_colors.copy()
-    count = preview._tpms_lattice_count
-    colors[:count, 3] = .22 if transparent else 1.
-    preview.set_facecolor(colors)
-    edges = np.zeros((preview._tpms_face_count, 4))
-    edges[:count] = (.10, .08, .05, .14 if transparent else .22)
-    edges[count:] = (.28, .03, .02, .10)
-    preview.set_edgecolor(edges)
+        return None
+    # Rebuild with shade=True, just as when a new model is displayed. Updating
+    # an existing collection's face colors can discard lighting on some
+    # Matplotlib versions. Reuse the same triangles and axes/view limits.
+    ax = preview.axes
+    replacement = _preview_collection(preview._tpms_triangles,
+                                      preview._tpms_lattice_count, transparent)
+    preview.remove()
+    ax.add_collection3d(replacement)
+    return replacement
 
 
 class TPMSAnalyzer:
@@ -538,7 +543,7 @@ class TPMSAnalyzer:
     def toggle_transparency(self):
         self.transparent = not self.transparent
         self.transparency_button.configure(text=f'Transparency: {"ON" if self.transparent else "OFF"}')
-        set_preview_transparency(self.lattice, self.transparent)
+        self.lattice = set_preview_transparency(self.lattice, self.transparent)
         self.canvas.draw_idle()
 
     def close(self):

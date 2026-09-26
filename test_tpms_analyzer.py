@@ -88,6 +88,17 @@ class NumericalTests(unittest.TestCase):
         self.assertEqual(b.wetted_area, 4*a.wetted_area)
         np.testing.assert_allclose(b.pore.diameter_xyz, 2*a.pore.diameter_xyz)
 
+    def test_preview_mesh_is_lighter_without_changing_analysis(self):
+        r = analyze(tpms_type='Gyroid', grid_size=60)
+        original_field = r.field.copy()
+        full_vertices, full_faces = geometry_mesh(r, max_display_points=1000)
+        vertices, faces = geometry_mesh(r)
+        self.assertLess(len(faces), len(full_faces)/2)
+        self.assertGreater(len(vertices), 0)
+        self.assertTrue(np.all(vertices >= 0))
+        self.assertTrue(np.all(vertices <= r.alpha+1e-6))
+        np.testing.assert_array_equal(r.field, original_field)
+
     def test_grid_rounding_and_validation(self):
         self.assertEqual(analyze(grid_size=20.5).grid_size, 21)
         for kwargs in [dict(target_porosity=0), dict(target_porosity=100),
@@ -99,15 +110,25 @@ class NumericalTests(unittest.TestCase):
         import io
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_agg import FigureCanvasAgg
-        from TPMS_Analyzer import plot_geometry
+        from TPMS_Analyzer import plot_geometry, set_preview_transparency
         r = analyze(grid_size=24)
         fig = Figure(figsize=(5, 5))
         FigureCanvasAgg(fig)
         ax = fig.add_subplot(111, projection='3d')
         lattice = plot_geometry(ax, r, geometry_mesh(r))
-        self.assertEqual(lattice.get_alpha(), .22)
-        lattice.set_alpha(1.)
-        self.assertEqual(lattice.get_alpha(), 1.)
+        self.assertEqual(len(ax.collections), 2)  # combined surfaces and center dot
+        self.assertGreater(lattice._tpms_face_count, lattice._tpms_lattice_count)
+        self.assertAlmostEqual(lattice._facecolor3d[0, 3], .22)
+        self.assertAlmostEqual(lattice._facecolor3d[-1, 3], 1.)
+        shaded_rgb = lattice._facecolor3d[:, :3].copy()
+        self.assertGreater(np.ptp(shaded_rgb[:lattice._tpms_lattice_count, 0]), .1)
+        set_preview_transparency(lattice, False)
+        self.assertTrue(np.all(lattice._facecolor3d[:, 3] == 1.))
+        set_preview_transparency(lattice, True)
+        self.assertAlmostEqual(lattice._facecolor3d[0, 3], .22)
+        self.assertAlmostEqual(lattice._facecolor3d[-1, 3], 1.)
+        np.testing.assert_array_equal(lattice._facecolor3d[:, :3], shaded_rgb)
+        self.assertGreater(lattice._edgecolor3d[0, 3], 0.)
         buf = io.BytesIO()
         fig.savefig(buf, format='png')
         self.assertGreater(buf.tell(), 1000)

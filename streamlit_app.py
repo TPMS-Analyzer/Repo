@@ -36,13 +36,6 @@ SURFACE_COLORS = {
     'Teal / Slate': ('#63c7bd', '#455568'),
     'Copper / Charcoal': ('#c88b62', '#343a40'),
     'Lavender / Graphite': ('#b6a0dd', '#505862'),
-    'Silver': ('#b8c2cc', '#b8c2cc'),
-    'Copper': ('#b87333', '#b87333'),
-    'Blue': ('#397dcc', '#397dcc'),
-    'Teal': ('#279b92', '#279b92'),
-    'Green': ('#57964b', '#57964b'),
-    'Purple': ('#8963bc', '#8963bc'),
-    'Graphite': ('#505862', '#505862'),
 }
 
 

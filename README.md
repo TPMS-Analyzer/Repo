@@ -1,100 +1,111 @@
-# TPMS Geometry Analyzer — desktop and Streamlit
+# TPMS Geometry Analyzer
 
-## Run in a web browser
+Explore triply periodic minimal surface (TPMS) structures in 3D and calculate their porosity, wetted surface area, and representative pore dimensions.
 
-This branch adds a Streamlit interface using the existing numerical engine from `main`. The desktop application is still available.
+**[Open the TPMS Analyzer website — recommended](https://tpmsanalyzer.streamlit.app/)**
 
-```text
+The hosted website is the easiest way to use the app: no Python installation is needed.
+
+## Choose how to run the app
+
+| Option | How it runs | Best for |
+| --- | --- | --- |
+| **Hosted website (recommended)** | Open [tpmsanalyzer.streamlit.app](https://tpmsanalyzer.streamlit.app/) in your browser. | Getting started immediately without installing software. |
+| **Local Streamlit app** | Run Python on your computer and use the app in your browser. | The web interface with calculations performed on your own computer. |
+| **Local desktop app** | Run Python to open a standalone application window. | Using the desktop interface without a browser. |
+
+Both local options use the same underlying numerical calculations. The Streamlit interface includes a detailed interactive preview, surface finishes, contrasting color schemes, and CSV results downloads.
+
+## Using the app
+
+1. Choose a **network type**: Solid or Sheet.
+2. Choose a **TPMS type**: Koch, Gyroid, Diamond, Primitive, IWP, Neovius, FRD, or PMY.
+3. Enter the **target porosity (%)** and **unit cell size (mm)**.
+4. Set the **grid points per axis**. The default is 150; larger grids require more memory and calculation time.
+5. Leave **display significant digits** at `auto`, or enter a value from 2 to 15.
+6. Press **Calculate** to display the geometry and results.
+
+In the web interface, drag to rotate, scroll to zoom, and use the chart toolbar to pan or reset the view. Change transparency, choose a Satin, Glossy, or Matte finish, and select a surface color. For two-tone options, the first color applies to the curved surface and the second to the flat cut faces. The red sphere shows the representative pore location and diameter.
+
+The results include calculated porosity, solid volume fraction, wetted area, unit-cell volume, and directional pore diameters. Use **Download results (CSV)** in the web interface to save the results.
+
+## Local installation
+
+**Anaconda is recommended**, using a separate environment with **Python 3.12**.
+
+### 1. Download the application
+
+Download the `main` branch from [this repository](https://github.com/TPMS-Analyzer/Repo) using **Code → Download ZIP**, then extract it. Keep the application files together in the extracted folder.
+
+### 2. Create a Python environment
+
+Install [Anaconda Distribution](https://www.anaconda.com/download). Open **Anaconda Prompt** on Windows, or a terminal with conda available on macOS/Linux, and run:
+
+```bash
+conda create -n tpms-analyzer python=3.12 tk pip
+conda activate tpms-analyzer
+```
+
+### 3. Install the required packages
+
+In the same terminal, change to the extracted application folder. Replace the example path below with the folder on your computer:
+
+```bash
+cd "path/to/extracted/application"
 python -m pip install -r requirements.txt
+```
+
+The requirements file installs the packages needed for both local interfaces:
+
+| Package | Purpose |
+| --- | --- |
+| NumPy | Numerical arrays and geometry calculations |
+| SciPy | Distance and connectivity calculations |
+| scikit-image | Building the 3D surface mesh |
+| Matplotlib | Desktop 3D preview |
+| Streamlit | Local browser interface |
+| Plotly | Interactive web 3D preview |
+
+The desktop interface also needs **Tkinter/Tcl-Tk**, provided by the `tk` package in the conda command above. It is not installed through pip. Package version requirements are listed in [requirements.txt](requirements.txt).
+
+## Run locally through Streamlit
+
+From the application folder, with the environment activated, run:
+
+```bash
 python -m streamlit run streamlit_app.py
 ```
 
-Open the local URL printed by Streamlit (normally `http://localhost:8501`). Choose inputs in the sidebar and click **Calculate**. The page includes all 17 result rows, a CSV download, and a Plotly 3D preview with lighting, transparency, and the representative red pore sphere. The browser view does not require Tkinter.
+Open the local address printed in the terminal, normally **http://localhost:8501**. Keep the terminal running while using the app. Press **Ctrl+C** in that terminal to stop it.
 
-Calculation results and sampled display geometry are kept in each user's session. Transparency changes reuse those results. The dense analysis field is released after calculation. The web interface allows 20–250 analysis grid points per axis; memory and processing time increase approximately with the cube of this setting. The desktop engine's calculations are unchanged.
+This runs the application on your computer; it does not publish a website.
 
-### Deploy with Streamlit Community Cloud
+## Run locally as a desktop app
 
-In [Streamlit Community Cloud](https://share.streamlit.io), create an app using:
+From the same folder and environment, run:
 
-- Repository: `TPMS-Analyzer/Repo`
-- Branch: `streamlit-visual-fidelity`
-- Main file path: `streamlit_app.py`
-- Python: `3.12` (the version used for validation)
-
-Authorize access to this private repository if requested. Dependencies are declared in the root `requirements.txt`, and the theme is in `.streamlit/config.toml`. The branch is ready to deploy; creating this branch does not publish a website.
-
-See the [official deployment guide](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy).
-
-### Web validation
-
-```text
-python -m unittest -v test_tpms_analyzer.py test_streamlit_app.py
-```
-
-Tests cover numerical agreement with the desktop engine, sphere coordinates through transparency changes, calculation submission, retained results, invalid input handling, and CSV export. Streamlit's AppTest checks application behavior; browser interaction and WebGL rendering still depend on the client browser.
-
-## Desktop application
-
-
-Install Python 3.10 or later (with Tcl/Tk), open a terminal in this folder, and run:
-
-```text
-python -m pip install -r requirements.txt
+```bash
 python TPMS_Analyzer.py
 ```
 
-On Windows, `py` may be used instead of `python`. Standard python.org Windows installers include Tkinter. On Linux, your distribution may require its `python3-tk` package.
+A standalone window opens with model inputs, calculation results, a transparency toggle, and a 3D preview. Use the plot toolbar for navigation and image saving. Results also print in the terminal.
 
-The GUI keeps the original title, input labels, defaults, eight TPMS choices, Solid/Sheet choices, calculate button, transparency toggle, results table, and 3D preview with a red representative pore sphere. Drag the plot to rotate it; the plot toolbar provides navigation and image saving. Results also print to the terminal. Narrow windows hide the preview and preserve the controls and scrollable table. Calculations run in a background thread so the controls remain responsive.
+For either local option, activate the environment again when opening a new terminal:
 
-## Preserved calculation details
-
-- Exact eight level-set expressions, including the source's two-term Diamond expression.
-- Inclusive 0-to-cell-size grid; MATLAB Y/X/Z array convention.
-- Solid `F > c`, Sheet `abs(F) <= c`.
-- Voxel-based threshold bisection, 60 iterations, 0.01 percentage-point stopping tolerance, and closest sampled threshold fallback.
-- Internal solid/void face counting for wetted area; no external-face or periodic-wrap contributions.
-- Single-cell Euclidean distance to solid, minus half a voxel; six-neighbor connectivity; directional radius bisection with 50 iterations and `dx/10` tolerance.
-- `Dp = min(Dx, Dy, Dz)` and the original representative-center selection, including column-major tie order.
-- All 17 result rows, significant-digit formatting, and original validation rules. Positive grid values ending in .5 round upward as in MATLAB.
-
-## Rendering and precision
-
-The interface uses Tkinter and Matplotlib, so native widget appearance, toolbar, lighting, and transparency rendering are not pixel-identical to MATLAB. The original layout and interaction are retained. The lattice has the original gold color and opacity (0.22 or 1); the red sphere stays opaque. Matplotlib transparent surfaces may show depth-order artifacts.
-
-The display uses scikit-image marching cubes, with the boundary solid portions capped by a padded-and-clamped display mesh. Pore openings remain open. Mesh triangulation differs from MATLAB `isosurface`/`isocaps`; display mesh padding is never used for analysis. Wetted area remains the source's voxel face count, not triangle area.
-
-SciPy replaces MATLAB Image Processing Toolbox operations. Distance results are cast to single precision to follow `bwdist`. Small floating-point differences, especially at exact level-set ties, can affect voxel counts and thresholds. No MATLAB installation was available for a direct numerical side-by-side comparison; do not assume bit-for-bit identity.
-
-The original pore measurement is a voxel-based, nonperiodic approximation. The plotted sphere is a representative position, not an exact throat. Large grids require substantial memory and rendering time, with storage growing approximately as the cube of the grid size.
-
-## Programmatic use
-
-```python
-from TPMS_Analyzer import analyze
-result = analyze(network_type='Sheet', tpms_type='Gyroid',
-                 target_porosity=70, alpha=2.54, grid_size=150)
-print(result.rows)
-print(result.pore.diameter_xyz)  # X, Y, Z in mm
+```bash
+conda activate tpms-analyzer
 ```
 
-Run the included checks with `python -m unittest -v test_tpms_analyzer.py`.
+## Troubleshooting
 
-## Detailed web preview
+- **A package is missing:** activate `tpms-analyzer`, then run `python -m pip install -r requirements.txt` from the application folder.
+- **The desktop window does not open:** run `python -m tkinter` to check Tkinter. If it is missing, install it in the active conda environment with `conda install tk`. The desktop app requires a graphical desktop session.
+- **The browser does not open automatically:** copy the local URL printed by Streamlit into your browser.
+- **Calculations take too long or use too much memory:** reduce the grid points per axis. The web interface accepts values from 20 to 250.
+- **A transparent surface is difficult to inspect:** turn transparency off to examine the curved surface and flat cut faces.
 
-This branch changes the Streamlit display only. The desktop engine and GUI are unchanged; the earlier web version remains on `streamlit-web-app`.
+## Understanding the results
 
-- The preview uses up to 150 grid samples per axis instead of the desktop preview's 35-sample cap. At the default 150-point Solid/Koch case, this increases the lattice from about 18,440 to 436,208 triangles.
-- Planar unit-cell cut faces have separate vertex buffers and outward normals, keeping sharp boundaries distinct from the smoothly shaded curved surface. Collapsed boundary triangles are removed.
-- A small viewing margin keeps the plot clipping planes away from the cut faces. This removes the speckling seen in the checked opaque and transparent renders without changing the unit-cell geometry.
-- The representative pore sphere is more finely sampled and retains its calculated center and radius.
-- Satin, Glossy, and Matte finishes change lighting highlights and roughness without rerunning the analysis. The highlights simulate a reflective finish; they are not ray-traced environment reflections.
+Results are numerical estimates from a sampled unit-cell grid, so grid resolution affects accuracy. The displayed surface may use fewer samples than the calculation grid. Wetted area is calculated from internal solid/void interfaces in the grid, rather than from the displayed triangles.
 
-The denser mesh takes longer to generate and transfer. Browser/GPU performance and transparency ordering can vary. Use the opaque view to inspect surface finish and cut faces.
-
-Run all checks with:
-
-```text
-python -m unittest -v test_tpms_analyzer.py test_streamlit_app.py test_web_mesh.py
-```
+The red sphere represents the calculated pore size at a representative location; it is not an exact reconstruction of a physical pore throat. Pore calculations use a single unit cell without periodic wrapping.

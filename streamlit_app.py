@@ -148,7 +148,7 @@ def main():
         st.download_button('Download results (CSV)', results_csv(model['rows']),
                            file_name=f"TPMS_{model['network']}_{model['tpms']}.csv", mime='text/csv')
     st.caption('The red sphere marks the representative pore location from the numerical analysis. '
-               'The detailed preview uses up to 150 grid samples per axis; results use the full analysis grid.')
+               'The detailed preview uses up to 250 grid samples per axis; results use the full analysis grid.')
 
 
 if __name__ == '__main__':

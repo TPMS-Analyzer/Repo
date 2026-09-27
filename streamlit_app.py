@@ -27,15 +27,22 @@ def calculate_model(network, tpms, porosity, cell_text, grid, precision):
                 revision=repr((network, tpms, porosity, cell_size, grid, digits)))
 
 
+# Each pair is (curved surface, flat unit-cell cut faces).
 SURFACE_COLORS = {
-    'Gold (default)': '#b19a57',
-    'Silver': '#b8c2cc',
-    'Copper': '#b87333',
-    'Blue': '#397dcc',
-    'Teal': '#279b92',
-    'Green': '#57964b',
-    'Purple': '#8963bc',
-    'Graphite': '#505862',
+    'Gold (default)': ('#b19a57', '#b19a57'),
+    'Light blue / Graphite': ('#8ecae6', '#505862'),
+    'Gold / Graphite': ('#b19a57', '#505862'),
+    'Silver / Navy': ('#c5cdd6', '#243b5a'),
+    'Teal / Slate': ('#63c7bd', '#455568'),
+    'Copper / Charcoal': ('#c88b62', '#343a40'),
+    'Lavender / Graphite': ('#b6a0dd', '#505862'),
+    'Silver': ('#b8c2cc', '#b8c2cc'),
+    'Copper': ('#b87333', '#b87333'),
+    'Blue': ('#397dcc', '#397dcc'),
+    'Teal': ('#279b92', '#279b92'),
+    'Green': ('#57964b', '#57964b'),
+    'Purple': ('#8963bc', '#8963bc'),
+    'Graphite': ('#505862', '#505862'),
 }
 
 
@@ -52,7 +59,7 @@ def preview_figure(model, transparent, finish='Satin', surface_color='Gold (defa
         fig.add_trace(go.Mesh3d(
             x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2],
             i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
-            color=SURFACE_COLORS[surface_color], opacity=.28 if transparent else 1.,
+            color=SURFACE_COLORS[surface_color][1 if flat else 0], opacity=.28 if transparent else 1.,
             flatshading=flat, name=name, hoverinfo='skip', showlegend=False,
             lighting=lighting, lightposition=light))
     if model['radius'] > 0 and np.all(np.isfinite(model['center'])):
@@ -135,7 +142,8 @@ def main():
     with view:
         transparent = st.toggle('Transparent lattice', value=True)
         finish = st.selectbox('Surface finish', ['Satin', 'Glossy', 'Matte'])
-        surface_color = st.selectbox('Surface color', list(SURFACE_COLORS))
+        surface_color = st.selectbox('Surface color', list(SURFACE_COLORS),
+                                    help='Two-tone options list the curved surface color first and the flat cut-face color second.')
         st.plotly_chart(preview_figure(model, transparent, finish, surface_color), width='stretch',
                         theme=None, key='tpms_preview',
                         config=dict(scrollZoom=True, displaylogo=False))

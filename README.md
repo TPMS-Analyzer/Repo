@@ -1,3 +1,5 @@
+<img src="https://github.com/TPMS-Analyzer/Repo/blob/main/TPMs_Logo.JPG?raw=true" alt="Logo" width="300">
+
 # TPMS Geometry Analyzer
 
 Explore triply periodic minimal surface (TPMS) structures in 3D and calculate their porosity, wetted surface area, and representative pore dimensions.
@@ -8,11 +10,11 @@ The hosted website is the easiest way to use the app: no Python installation is 
 
 ## Choose how to run the app
 
-| Option | How it runs | Best for |
-| --- | --- | --- |
-| **Hosted website (recommended)** | Open [tpmsanalyzer.streamlit.app](https://tpmsanalyzer.streamlit.app/) in your browser. | Getting started immediately without installing software. |
-| **Local Streamlit app** | Run Python on your computer and use the app in your browser. | The web interface with calculations performed on your own computer. |
-| **Local desktop app** | Run Python to open a standalone application window. | Using the desktop interface without a browser. |
+| Option | How it runs |
+| --- | --- |
+| **Hosted website (recommended)** | Open [tpmsanalyzer.streamlit.app](https://tpmsanalyzer.streamlit.app/) in your browser. |
+| **Local Streamlit app** | Run Python on your computer and use the app in your browser. |
+| **Local desktop app** | Run Python to open a standalone application window. |
 
 Both local options use the same underlying numerical calculations. The Streamlit interface includes a detailed interactive preview, surface finishes, contrasting color schemes, and CSV results downloads.
 

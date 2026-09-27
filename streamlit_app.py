@@ -95,7 +95,7 @@ def results_csv(rows):
 
 
 def main():
-    st.set_page_config(page_title='TPMS Geometry Analyzer', page_icon='🧊', layout='wide')
+    st.set_page_config(page_title='TPMS Geometry Analyzer', page_icon="https://github.com/TPMS-Analyzer/Repo/blob/main/TPMs_Logo.JPG?raw=true", layout='wide')
     st.title('TPMS Geometry Analyzer')
     st.caption('Explore periodic surfaces, porosity, and representative pore dimensions.')
     with st.sidebar:

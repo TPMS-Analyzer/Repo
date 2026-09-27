@@ -27,7 +27,19 @@ def calculate_model(network, tpms, porosity, cell_text, grid, precision):
                 revision=repr((network, tpms, porosity, cell_size, grid, digits)))
 
 
-def preview_figure(model, transparent, finish='Satin'):
+SURFACE_COLORS = {
+    'Gold (default)': '#b19a57',
+    'Silver': '#b8c2cc',
+    'Copper': '#b87333',
+    'Blue': '#397dcc',
+    'Teal': '#279b92',
+    'Green': '#57964b',
+    'Purple': '#8963bc',
+    'Graphite': '#505862',
+}
+
+
+def preview_figure(model, transparent, finish='Satin', surface_color='Gold (default)'):
     materials = {'Matte': (.08, .85, .05), 'Satin': (.6, .4, .18),
                  'Glossy': (1.2, .22, .35)}
     specular, roughness, fresnel = materials[finish]
@@ -40,7 +52,7 @@ def preview_figure(model, transparent, finish='Satin'):
         fig.add_trace(go.Mesh3d(
             x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2],
             i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
-            color='#b19a57', opacity=.28 if transparent else 1.,
+            color=SURFACE_COLORS[surface_color], opacity=.28 if transparent else 1.,
             flatshading=flat, name=name, hoverinfo='skip', showlegend=False,
             lighting=lighting, lightposition=light))
     if model['radius'] > 0 and np.all(np.isfinite(model['center'])):
@@ -123,7 +135,8 @@ def main():
     with view:
         transparent = st.toggle('Transparent lattice', value=True)
         finish = st.selectbox('Surface finish', ['Satin', 'Glossy', 'Matte'])
-        st.plotly_chart(preview_figure(model, transparent, finish), width='stretch',
+        surface_color = st.selectbox('Surface color', list(SURFACE_COLORS))
+        st.plotly_chart(preview_figure(model, transparent, finish, surface_color), width='stretch',
                         theme=None, key='tpms_preview',
                         config=dict(scrollZoom=True, displaylogo=False))
         st.caption('Drag to rotate. Scroll to zoom. Use the chart toolbar to pan or reset the camera.')

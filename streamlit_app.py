@@ -6,18 +6,20 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
-from TPMS_Analyzer import TPMS_TYPES, analyze, geometry_mesh, resolve_display_digits
+from TPMS_Analyzer import TPMS_TYPES, analyze, resolve_display_digits
+from web_mesh import detailed_mesh, split_surface_parts
 
 
 def calculate_model(network, tpms, porosity, cell_text, grid, precision):
     cell_size = float(cell_text)
     digits = resolve_display_digits(cell_text, precision)
     result = analyze(network, tpms, porosity, cell_size, grid, digits)
-    vertices, faces = geometry_mesh(result)
+    vertices, faces = detailed_mesh(result)
     center = result.pore.center_index[[1, 0, 2]] * cell_size/(result.grid_size-1)
     # Retain only results and display geometry in this user's session; release
     # the large analysis field after each calculation.
     return dict(vertices=vertices, faces=faces, center=center,
+                parts=split_surface_parts(vertices, faces, cell_size),
                 radius=result.pore.radius, diameter=result.pore.diameter,
                 rows=result.rows, porosity=result.actual_porosity,
                 area=result.wetted_area, alpha=cell_size, digits=digits,
@@ -25,20 +27,25 @@ def calculate_model(network, tpms, porosity, cell_text, grid, precision):
                 revision=repr((network, tpms, porosity, cell_size, grid, digits)))
 
 
-def preview_figure(model, transparent):
-    vertices, faces = model['vertices'], model['faces']
+def preview_figure(model, transparent, finish='Satin'):
+    materials = {'Matte': (.08, .85, .05), 'Satin': (.6, .4, .18),
+                 'Glossy': (1.2, .22, .35)}
+    specular, roughness, fresnel = materials[finish]
+    lighting = dict(ambient=.42, diffuse=.78, specular=specular,
+                    roughness=roughness, fresnel=fresnel,
+                    facenormalsepsilon=1e-15, vertexnormalsepsilon=1e-15)
+    light = dict(x=4*model['alpha'], y=6*model['alpha'], z=8*model['alpha'])
     fig = go.Figure()
-    if len(faces):
+    for name, vertices, faces, flat in model['parts']:
         fig.add_trace(go.Mesh3d(
             x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2],
             i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
             color='#b19a57', opacity=.28 if transparent else 1.,
-            flatshading=False, name='TPMS surface', hoverinfo='skip',
-            lighting=dict(ambient=.35, diffuse=.8, specular=.45, roughness=.35),
-            lightposition=dict(x=100, y=200, z=300)))
+            flatshading=flat, name=name, hoverinfo='skip', showlegend=False,
+            lighting=lighting, lightposition=light))
     if model['radius'] > 0 and np.all(np.isfinite(model['center'])):
-        u = np.linspace(0, 2*np.pi, 49)
-        v = np.linspace(-np.pi/2, np.pi/2, 49)
+        u = np.linspace(0, 2*np.pi, 97)
+        v = np.linspace(-np.pi/2, np.pi/2, 97)
         radius, center = model['radius'], model['center']
         x = center[0] + radius*np.outer(np.cos(u), np.cos(v))
         y = center[1] + radius*np.outer(np.sin(u), np.cos(v))
@@ -48,8 +55,14 @@ def preview_figure(model, transparent):
             colorscale=[[0, '#e33726'], [1, '#e33726']],
             showscale=False, opacity=1., name='Representative pore',
             lighting=dict(ambient=.4, diffuse=.8, specular=.55, roughness=.25),
+            lightposition=light,
             hovertemplate=f"Representative diameter: {model['diameter']:.6g} mm<extra></extra>"))
-    axis = dict(range=[0, model['alpha']], showbackground=True,
+    # Do not put the WebGL clipping planes exactly on the cut faces. Floating
+    # point clipping there causes speckles even on perfectly planar triangles.
+    margin = .03*model['alpha']
+    axis = dict(range=[-margin, model['alpha']+margin],
+                tickvals=np.linspace(0., model['alpha'], 6),
+                showbackground=True, showgrid=False,
                 backgroundcolor='#f6f8fb', gridcolor='#dce3ec')
     fig.update_layout(
         height=620, margin=dict(l=0, r=0, t=20, b=0),
@@ -109,7 +122,8 @@ def main():
     view, results = st.columns([1.6, 1])
     with view:
         transparent = st.toggle('Transparent lattice', value=True)
-        st.plotly_chart(preview_figure(model, transparent), width='stretch',
+        finish = st.selectbox('Surface finish', ['Satin', 'Glossy', 'Matte'])
+        st.plotly_chart(preview_figure(model, transparent, finish), width='stretch',
                         theme=None, key='tpms_preview',
                         config=dict(scrollZoom=True, displaylogo=False))
         st.caption('Drag to rotate. Scroll to zoom. Use the chart toolbar to pan or reset the camera.')
@@ -120,7 +134,7 @@ def main():
         st.download_button('Download results (CSV)', results_csv(model['rows']),
                            file_name=f"TPMS_{model['network']}_{model['tpms']}.csv", mime='text/csv')
     st.caption('The red sphere marks the representative pore location from the numerical analysis. '
-               'The surface preview is sampled for display; the results use the full analysis grid.')
+               'The detailed preview uses up to 150 grid samples per axis; results use the full analysis grid.')
 
 
 if __name__ == '__main__':

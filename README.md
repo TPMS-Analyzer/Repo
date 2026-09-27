@@ -18,7 +18,7 @@ Calculation results and sampled display geometry are kept in each user's session
 In [Streamlit Community Cloud](https://share.streamlit.io), create an app using:
 
 - Repository: `TPMS-Analyzer/Repo`
-- Branch: `streamlit-web-app`
+- Branch: `streamlit-visual-fidelity`
 - Main file path: `streamlit_app.py`
 - Python: `3.12` (the version used for validation)
 
@@ -80,3 +80,21 @@ print(result.pore.diameter_xyz)  # X, Y, Z in mm
 ```
 
 Run the included checks with `python -m unittest -v test_tpms_analyzer.py`.
+
+## Detailed web preview
+
+This branch changes the Streamlit display only. The desktop engine and GUI are unchanged; the earlier web version remains on `streamlit-web-app`.
+
+- The preview uses up to 150 grid samples per axis instead of the desktop preview's 35-sample cap. At the default 150-point Solid/Koch case, this increases the lattice from about 18,440 to 436,208 triangles.
+- Planar unit-cell cut faces have separate vertex buffers and outward normals, keeping sharp boundaries distinct from the smoothly shaded curved surface. Collapsed boundary triangles are removed.
+- A small viewing margin keeps the plot clipping planes away from the cut faces. This removes the speckling seen in the checked opaque and transparent renders without changing the unit-cell geometry.
+- The representative pore sphere is more finely sampled and retains its calculated center and radius.
+- Satin, Glossy, and Matte finishes change lighting highlights and roughness without rerunning the analysis. The highlights simulate a reflective finish; they are not ray-traced environment reflections.
+
+The denser mesh takes longer to generate and transfer. Browser/GPU performance and transparency ordering can vary. Use the opaque view to inspect surface finish and cut faces.
+
+Run all checks with:
+
+```text
+python -m unittest -v test_tpms_analyzer.py test_streamlit_app.py test_web_mesh.py
+```

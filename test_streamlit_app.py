@@ -16,10 +16,15 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(model['rows'], expected.rows)
         self.assertNotIn('field', model)
         figures = [preview_figure(model, state) for state in (True, False)]
+        spheres = [next(t for t in f.data if t.name == 'Representative pore') for f in figures]
         for coordinate in ('x', 'y', 'z'):
-            np.testing.assert_array_equal(getattr(figures[0].data[1], coordinate),
-                                          getattr(figures[1].data[1], coordinate))
-        self.assertEqual(figures[0].data[1].opacity, 1.)
+            np.testing.assert_array_equal(getattr(spheres[0], coordinate),
+                                          getattr(spheres[1], coordinate))
+        self.assertEqual(spheres[0].opacity, 1.)
+        self.assertLess(figures[0].layout.scene.xaxis.range[0], 0)
+        self.assertGreater(figures[0].layout.scene.xaxis.range[1], model['alpha'])
+        glossy = preview_figure(model, False, 'Glossy')
+        self.assertGreater(glossy.data[0].lighting.specular, figures[0].data[0].lighting.specular)
         rows = list(csv.reader(io.StringIO(results_csv(model['rows']))))
         self.assertEqual(len(rows), 18)
 
@@ -35,6 +40,9 @@ class WebAppTests(unittest.TestCase):
         app.toggle[0].set_value(False).run()
         self.assertFalse(app.exception)
         np.testing.assert_array_equal(before['vertices'], app.session_state['analysis']['vertices'])
+        self.assertEqual(before['rows'], app.session_state['analysis']['rows'])
+        next(s for s in app.selectbox if s.label == 'Surface finish').set_value('Glossy').run()
+        self.assertFalse(app.exception)
         self.assertEqual(before['rows'], app.session_state['analysis']['rows'])
         app.text_input[0].set_value('invalid')
         app.button[0].click().run()

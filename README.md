@@ -1,4 +1,41 @@
-# TPMS Geometry Analyzer — Python translation
+# TPMS Geometry Analyzer — desktop and Streamlit
+
+## Run in a web browser
+
+This branch adds a Streamlit interface using the existing numerical engine from `main`. The desktop application is still available.
+
+```text
+python -m pip install -r requirements.txt
+python -m streamlit run streamlit_app.py
+```
+
+Open the local URL printed by Streamlit (normally `http://localhost:8501`). Choose inputs in the sidebar and click **Calculate**. The page includes all 17 result rows, a CSV download, and a Plotly 3D preview with lighting, transparency, and the representative red pore sphere. The browser view does not require Tkinter.
+
+Calculation results and sampled display geometry are kept in each user's session. Transparency changes reuse those results. The dense analysis field is released after calculation. The web interface allows 20–250 analysis grid points per axis; memory and processing time increase approximately with the cube of this setting. The desktop engine's calculations are unchanged.
+
+### Deploy with Streamlit Community Cloud
+
+In [Streamlit Community Cloud](https://share.streamlit.io), create an app using:
+
+- Repository: `TPMS-Analyzer/Repo`
+- Branch: `streamlit-visual-fidelity`
+- Main file path: `streamlit_app.py`
+- Python: `3.12` (the version used for validation)
+
+Authorize access to this private repository if requested. Dependencies are declared in the root `requirements.txt`, and the theme is in `.streamlit/config.toml`. The branch is ready to deploy; creating this branch does not publish a website.
+
+See the [official deployment guide](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy).
+
+### Web validation
+
+```text
+python -m unittest -v test_tpms_analyzer.py test_streamlit_app.py
+```
+
+Tests cover numerical agreement with the desktop engine, sphere coordinates through transparency changes, calculation submission, retained results, invalid input handling, and CSV export. Streamlit's AppTest checks application behavior; browser interaction and WebGL rendering still depend on the client browser.
+
+## Desktop application
+
 
 Install Python 3.10 or later (with Tcl/Tk), open a terminal in this folder, and run:
 
@@ -43,3 +80,21 @@ print(result.pore.diameter_xyz)  # X, Y, Z in mm
 ```
 
 Run the included checks with `python -m unittest -v test_tpms_analyzer.py`.
+
+## Detailed web preview
+
+This branch changes the Streamlit display only. The desktop engine and GUI are unchanged; the earlier web version remains on `streamlit-web-app`.
+
+- The preview uses up to 150 grid samples per axis instead of the desktop preview's 35-sample cap. At the default 150-point Solid/Koch case, this increases the lattice from about 18,440 to 436,208 triangles.
+- Planar unit-cell cut faces have separate vertex buffers and outward normals, keeping sharp boundaries distinct from the smoothly shaded curved surface. Collapsed boundary triangles are removed.
+- A small viewing margin keeps the plot clipping planes away from the cut faces. This removes the speckling seen in the checked opaque and transparent renders without changing the unit-cell geometry.
+- The representative pore sphere is more finely sampled and retains its calculated center and radius.
+- Satin, Glossy, and Matte finishes change lighting highlights and roughness without rerunning the analysis. The highlights simulate a reflective finish; they are not ray-traced environment reflections.
+
+The denser mesh takes longer to generate and transfer. Browser/GPU performance and transparency ordering can vary. Use the opaque view to inspect surface finish and cut faces.
+
+Run all checks with:
+
+```text
+python -m unittest -v test_tpms_analyzer.py test_streamlit_app.py test_web_mesh.py
+```

@@ -2,6 +2,8 @@
 
 # TPMS Geometry Analyzer
 
+> **Branch update — triangulated wetted area:** This branch replaces voxel-face area counting with full-grid isosurface triangle areas. To try this change locally, download the `triangulated-wetted-area` branch. The hosted website uses whichever branch is configured in Streamlit.
+
 Explore triply periodic minimal surface (TPMS) structures in 3D and calculate their porosity, wetted surface area, and representative pore dimensions.
 
 **[Open the TPMS Analyzer website — recommended](https://tpmsanalyzer.streamlit.app/)**
@@ -108,6 +110,18 @@ conda activate tpms-analyzer
 
 ## Understanding the results
 
-Results are numerical estimates from a sampled unit-cell grid, so grid resolution affects accuracy. The displayed surface may use fewer samples than the calculation grid. Wetted area is calculated from internal solid/void interfaces in the grid, rather than from the displayed triangles.
+Results are numerical estimates from a sampled unit-cell grid, so grid resolution affects accuracy. Wetted area is calculated by summing triangle areas on isosurfaces extracted from the full calculation grid: F = c for Solid, and F = −c plus F = c for Sheet. A zero-thickness Sheet (c = 0) has zero wetted area; negative Sheet thresholds are rejected. Levels at or outside the field extrema are skipped.
+
+Only the solid–void interface inside the unit cell is counted. The flat cut faces used to cap the 3D preview are excluded, and display resolution does not affect the calculated area. The surface-area/volume result uses this same triangulated area. This replaces voxel-face counting, which overestimates area through its staircase approximation. The area remains a grid-dependent approximation; scikit-image marching cubes and MATLAB isosurface need not produce identical triangulations. Porosity and pore-diameter calculations retain their existing methods.
 
 The red sphere represents the calculated pore size at a representative location; it is not an exact reconstruction of a physical pore throat. Pore calculations use a single unit cell without periodic wrapping.
+
+### Area calculation checks
+
+Run the analytical geometry checks from the application folder:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+These cover planar and oblique interfaces, both Sheet boundaries, zero-thickness Sheets, field-extrema handling, physical scaling, sphere convergence, and invalid mesh areas.

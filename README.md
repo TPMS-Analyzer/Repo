@@ -2,8 +2,6 @@
 
 # TPMS Geometry Analyzer
 
-> **Branch update — triangulated wetted area:** This branch replaces voxel-face area counting with full-grid isosurface triangle areas. To try this change locally, download the `triangulated-wetted-area` branch. The hosted website uses whichever branch is configured in Streamlit.
-
 Explore triply periodic minimal surface (TPMS) structures in 3D and calculate their porosity, wetted surface area, and representative pore dimensions.
 
 **[Open the TPMS Analyzer website — recommended](https://tpmsanalyzer.streamlit.app/)**
@@ -65,7 +63,7 @@ The requirements file installs the packages needed for both local interfaces:
 | --- | --- |
 | NumPy | Numerical arrays and geometry calculations |
 | SciPy | Distance and connectivity calculations |
-| scikit-image | Building the 3D surface mesh |
+| scikit-image | Isosurface extraction for wetted area and the 3D preview |
 | Matplotlib | Desktop 3D preview |
 | Streamlit | Local browser interface |
 | Plotly | Interactive web 3D preview |
@@ -110,18 +108,17 @@ conda activate tpms-analyzer
 
 ## Understanding the results
 
-Results are numerical estimates from a sampled unit-cell grid, so grid resolution affects accuracy. Wetted area is calculated by summing triangle areas on isosurfaces extracted from the full calculation grid: F = c for Solid, and F = −c plus F = c for Sheet. A zero-thickness Sheet (c = 0) has zero wetted area; negative Sheet thresholds are rejected. Levels at or outside the field extrema are skipped.
+The app estimates geometry properties from a sampled unit-cell grid. Increasing grid resolution can improve accuracy, but also increases calculation time and memory use. Check that results have converged sufficiently for your intended use.
 
-Only the solid–void interface inside the unit cell is counted. The flat cut faces used to cap the 3D preview are excluded, and display resolution does not affect the calculated area. The surface-area/volume result uses this same triangulated area. This replaces voxel-face counting, which overestimates area through its staircase approximation. The area remains a grid-dependent approximation; scikit-image marching cubes and MATLAB isosurface need not produce identical triangulations. Porosity and pore-diameter calculations retain their existing methods.
+**Wetted surface area** is the solid–void interfacial area inside the unit cell. It is calculated by summing triangle areas on isosurfaces extracted from the full calculation grid:
 
-The red sphere represents the calculated pore size at a representative location; it is not an exact reconstruction of a physical pore throat. Pore calculations use a single unit cell without periodic wrapping.
+- **Solid:** the surface at F = c.
+- **Sheet:** the two surfaces at F = −c and F = c.
 
-### Area calculation checks
+The flat cut faces used to cap the 3D preview are excluded. The surface-area/volume result uses this same triangulated area. Display settings and the preview's sampling resolution do not change the calculated values. A zero-thickness Sheet has zero wetted area, and levels at or outside the field extrema are not counted.
 
-Run the analytical geometry checks from the application folder:
+**Pore diameter** is a voxel-based estimate of the largest traversable sphere diameter in each coordinate direction. The representative diameter is the smallest of the X, Y, and Z directional values. The red sphere illustrates that diameter at a representative location; it is not an exact reconstruction of a physical pore throat. These calculations use a single unit cell without periodic wrapping.
 
-```bash
-python -m unittest discover -s tests -v
-```
+## License
 
-These cover planar and oblique interfaces, both Sheet boundaries, zero-thickness Sheets, field-extrema handling, physical scaling, sphere convergence, and invalid mesh areas.
+TPMS Geometry Analyzer is distributed under the [MIT License](LICENSE). Its third-party dependencies retain their respective licenses.

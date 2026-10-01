@@ -119,8 +119,51 @@ def find_level_set_constant(field, network_type, target_porosity):
     return float(c)
 
 
-def calculate_wetted_surface_area(mask, dx):
-    return sum(np.count_nonzero(np.diff(mask, axis=a)) for a in range(3)) * dx**2
+def calculate_wetted_surface_area(field, c, network_type, dx):
+    """Area of the unpadded solid/void isosurfaces on the full analysis grid.
+
+    Solid uses F=c; Sheet sums F=-c and F=c. No unit-cell caps or display
+    downsampling are used. The uniform grid spacing dx is in physical units.
+    Field axes are Y/X/Z; swapping X and Y does not change triangle areas.
+    """
+    from skimage.measure import marching_cubes
+
+    network = network_type.strip().lower()
+    if network not in ('solid', 'sheet'):
+        raise ValueError('Unknown network type.')
+    if not np.isfinite(c):
+        raise ValueError('Level-set constant must be finite.')
+    if network == 'sheet':
+        if c < 0:
+            raise ValueError('Sheet level-set constant must be nonnegative.')
+        if c == 0:
+            return 0.  # Zero thickness: do not double-count the zero level.
+        levels = (-c, c)
+    else:
+        levels = (c,)
+    field = np.asarray(field)
+    if field.ndim != 3 or min(field.shape) < 2 or not np.all(np.isfinite(field)):
+        raise ValueError('Field must be a finite 3D array with at least two samples per axis.')
+    if not np.isfinite(dx) or dx <= 0:
+        raise ValueError('Grid spacing must be finite and positive.')
+    field_min, field_max = float(field.min()), float(field.max())
+    area = 0.
+    for level in levels:
+        if level <= field_min or level >= field_max:
+            continue
+        vertices, faces, _, _ = marching_cubes(
+            field, level=level, spacing=(dx, dx, dx),
+            method='lewiner', allow_degenerate=True)
+        if not len(vertices) or not len(faces):
+            continue
+        triangles = vertices.astype(np.float64, copy=False)[faces]
+        edge1 = triangles[:, 1]-triangles[:, 0]
+        edge2 = triangles[:, 2]-triangles[:, 0]
+        triangle_areas = .5*np.linalg.norm(np.cross(edge1, edge2), axis=1)
+        if not np.all(np.isfinite(triangle_areas)):
+            raise ValueError('Nonfinite triangle area encountered in isosurface mesh.')
+        area += float(np.sum(triangle_areas, dtype=np.float64))
+    return area
 
 
 def spanning_labels(labels, direction_index):
@@ -230,7 +273,7 @@ class AnalysisResult:
             ('Calculated porosity', self.actual_porosity, '%'),
             ('Solid volume fraction', self.solid_fraction, '%'),
             ('Level-set constant, c', self.c, '-'),
-            ('Wetted area (voxel)', self.wetted_area, 'mm^2'),
+            ('Wetted area (isosurface)', self.wetted_area, 'mm^2'),
             ('Unit cell volume', self.alpha**3, 'mm^3'),
             ('Surface area / volume', self.wetted_area/self.alpha**3, '1/mm'),
             *[(f'Pore diameter {d}', v, 'mm') for d, v in zip('XYZ', p.diameter_xyz)],
@@ -255,7 +298,7 @@ def analyze(network_type='Solid', tpms_type='Koch', target_porosity=70.,
     solid_fraction = 100*np.count_nonzero(mask)/mask.size
     porosity = 100*np.count_nonzero(~mask)/mask.size
     dx = alpha/(grid_size-1)
-    area = calculate_wetted_surface_area(mask, dx)
+    area = calculate_wetted_surface_area(field, c, network_type, dx)
     pore = calculate_traversable_pore_diameter(mask, dx)
     return AnalysisResult(network_type, tpms_type, target_porosity, alpha, grid_size,
                           digits, field, c, porosity, solid_fraction, area, pore)
